@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lung Disease Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            color: #333;
+            line-height: 1.6;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        
+        header {
+            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent background */
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .intro {
+            text-align: center;
+            margin-bottom: 3rem;
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+            padding: 2rem;
+            border-radius: 8px;
+        }
+        
+        .models-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 2rem;
+        }
+        
+        .model-card {
+            background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 300px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .model-image {
+            height: 200px;
+            width: 100%;
+            background-position: center;
+            background-size: cover;
+        }
+        
+        .lung-cancer {
+            background-image: url("{{ url_for('static', filename='images/cancer/lungcancerhero.jpeg') }}");
+        }
+        
+        .tuberculosis {
+            background-image: url("{{ url_for('static', filename='images/tb/tbhero.jpeg') }}");
+        }
+        
+        .pneumonia {
+            background-image: url("{{ url_for('static', filename='images/pnuem/pnuemhero.jpeg') }}");
+        }
+        
+        .model-info {
+            padding: 1.5rem;
+        }
+        
+        .model-info h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .model-info p {
+            margin-bottom: 1.5rem;
+            color: #666;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        footer {
+            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent background */
+            color: white;
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <video id="background-video" autoplay loop muted>
+        <source src="{{ url_for('static', filename='videos/herobgvid.mp4') }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <header>
+        <h1>Lung Disease Detection System</h1>
+        <p>AI-powered detection for lung cancer, tuberculosis, and pneumonia</p>
+    </header>
+    
+    <div class="container">
+        <div class="intro">
+            <h2>Early Detection Saves Lives</h2>
+            <p>Our advanced deep learning models analyze chest X-rays and CT scans to detect lung diseases with high accuracy.</p>
+            <p>Select one of our detection models below to get started.</p>
+        </div>
+        
+        <div class="models-container">
+            <div class="model-card">
+                <div class="model-image lung-cancer"></div>
+                <div class="model-info">
+                    <h3>Lung Cancer Detection</h3>
+                    <p>Early detection of lung cancer using advanced convolutional neural networks trained on thousands of CT scans.</p>
+                    <a href="{{ url_for('lung_cancer_page') }}" class="btn">Use This Model</a>
+                </div>
+            </div>
+            
+            <div class="model-card">
+                <div class="model-image tuberculosis"></div>
+                <div class="model-info">
+                    <h3>Tuberculosis Detection</h3>
+                    <p>Identify tuberculosis patterns in chest X-rays with our model trained on clinical datasets from around the world.</p>
+                    <a href="{{ url_for('tuberculosis_page') }}" class="btn">Use This Model</a>
+                </div>
+            </div>
+            
+            <div class="model-card">
+                <div class="model-image pneumonia"></div>
+                <div class="model-info">
+                    <h3>Pneumonia Detection</h3>
+                    <p>Quickly detect pneumonia in chest X-rays using our model that can differentiate between viral and bacterial pneumonia.</p>
+                    <a href="{{ url_for('pneumonia_page') }}" class="btn">Use This Model</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>&copy; 2025 Lung Disease Detection System. All rights reserved.</p>
+    </footer>
+</body>
+</html>
