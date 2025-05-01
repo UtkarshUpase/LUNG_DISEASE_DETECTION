@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lung Disease Detection</title>
+    <title>LungScan - Lung Disease Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Poppins', sans-serif;
         }
         
         body {
-            color: #333;
+            background-color: #121212;
+            color: #e0e0e0;
             line-height: 1.6;
-            position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
         }
         
-        #background-video {
+        .background-video {
             position: fixed;
             top: 0;
             left: 0;
@@ -27,163 +28,654 @@
             height: 100%;
             object-fit: cover;
             z-index: -1;
+            opacity: 0.3;
         }
         
-        header {
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent background */
-            color: white;
-            text-align: center;
-            padding: 2rem 0;
-            position: relative;
-            z-index: 1;
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.9));
+            z-index: -1;
         }
         
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
+            display: flex;
+            min-height: 100vh;
             position: relative;
-            z-index: 1;
         }
         
-        .intro {
+        .sidebar {
+            width: 120px;
+            background-color: rgba(18, 18, 18, 0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(44, 44, 44, 0.5);
+            padding: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        
+        .logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white;
             text-align: center;
             margin-bottom: 3rem;
-            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
-            padding: 2rem;
-            border-radius: 8px;
+            line-height: 1.2;
+            position: relative;
+            transition: all 0.3s ease;
         }
         
-        .models-container {
+        .logo::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: #6c5ce7;
+            transition: width 0.3s ease;
+        }
+        
+        .logo:hover::after {
+            width: 80%;
+        }
+        
+        .nav-item {
+            width: 60px;
+            height: 60px;
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             justify-content: center;
-            gap: 2rem;
-        }
-        
-        .model-card {
-            background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            width: 300px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .model-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .model-image {
-            height: 200px;
-            width: 100%;
-            background-position: center;
-            background-size: cover;
-        }
-        
-        .lung-cancer {
-            background-image: url("{{ url_for('static', filename='images/cancer/lungcancerhero.jpeg') }}");
-        }
-        
-        .tuberculosis {
-            background-image: url("{{ url_for('static', filename='images/tb/tbhero.jpeg') }}");
-        }
-        
-        .pneumonia {
-            background-image: url("{{ url_for('static', filename='images/pnuem/pnuemhero.jpeg') }}");
-        }
-        
-        .model-info {
-            padding: 1.5rem;
-        }
-        
-        .model-info h3 {
+            border-radius: 12px;
             margin-bottom: 1rem;
-            color: #2c3e50;
-        }
-        
-        .model-info p {
-            margin-bottom: 1.5rem;
-            color: #666;
-        }
-        
-        .btn {
-            display: inline-block;
-            background-color: #3498db;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
+            color: #a0a0a0;
             text-decoration: none;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
+            font-size: 0.8rem;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         
-        .btn:hover {
-            background-color: #2980b9;
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(108, 92, 231, 0.1);
+            border-radius: 12px;
+            transform: scale(0);
+            transition: transform 0.3s ease;
         }
         
-        footer {
-            background-color: rgba(44, 62, 80, 0.8); /* Semi-transparent background */
+        .nav-item:hover::before, .nav-item.active::before {
+            transform: scale(1);
+        }
+        
+        .nav-item:hover, .nav-item.active {
             color: white;
-            text-align: center;
-            padding: 1.5rem 0;
-            margin-top: 3rem;
+            transform: translateY(-5px);
+        }
+        
+        .nav-item svg {
+            margin-bottom: 0.5rem;
+            width: 24px;
+            height: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item:hover svg, .nav-item.active svg {
+            transform: scale(1.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            z-index: 1;
+        }
+        
+        .search-bar {
+            background-color: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            margin-bottom: 2rem;
+            width: 100%;
+            max-width: 700px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.1);
+        }
+        
+        .search-bar:focus-within {
+            box-shadow: 0 0 15px rgba(108, 92, 231, 0.3);
+            border-color: rgba(108, 92, 231, 0.5);
+        }
+        
+        .search-bar svg {
+            color: #6b7280;
+            margin-right: 0.75rem;
+        }
+        
+        .search-bar input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1rem;
+            width: 100%;
+            outline: none;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-btn {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            background-color: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.1);
+        }
+        
+        .login-btn:hover {
+            background-color: rgba(108, 92, 231, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+        
+        .login-btn svg {
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .login-btn:hover svg {
+            transform: translateX(5px);
+        }
+        
+        .tabs {
+            background-color: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            display: inline-flex;
+            padding: 0.5rem;
+            margin-bottom: 3rem;
+            border: 1px solid rgba(108, 92, 231, 0.1);
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            color: #a0a0a0;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
             position: relative;
             z-index: 1;
+        }
+        
+        .tab.active {
+            background-color: #6c5ce7;
+            color: white;
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+        }
+        
+        .tab:not(.active):hover {
+            color: white;
+            background-color: rgba(108, 92, 231, 0.1);
+        }
+        
+        .disease-info {
+            display: none;
+            background-color: rgba(30, 35, 48, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            animation: fadeIn 0.5s ease forwards;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .disease-info.active {
+            display: block;
+        }
+        
+        .disease-info h2 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .disease-info h2 span {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #6c5ce7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .disease-content {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            align-items: stretch;
+            min-height: 250px;
+        }
+        
+        .disease-text {
+            flex: 1;
+            max-width: 50%;
+            min-width: 300px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .disease-image {
+            flex: 1;
+            max-width: 50%;
+            min-width: 300px;
+            height: 300px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .disease-image img {
+            width: 100%;
+            height: 200%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.5s ease;
+        }
+        
+        .disease-image:hover img {
+            transform: scale(1.05);
+        }
+        
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 1rem;
+        }
+        
+        .card {
+            background-color: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.1);
+            cursor: pointer;
+        }
+        
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            border-color: rgba(108, 92, 231, 0.5);
+        }
+        
+        .card-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1.5rem;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover .card-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+        
+        .cancer-icon {
+            background-color: #ff9f43;
+        }
+        
+        .tb-icon {
+            background-color: #ff6b6b;
+        }
+        
+        .pneumonia-icon {
+            background-color: #c56cf0;
+        }
+        
+        .card-content h3 {
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .card-content p {
+            color: #a0a0a0;
+            font-size: 0.9rem;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 1rem;
+                border-right: none;
+                border-bottom: 1px solid rgba(44, 44, 44, 0.5);
+            }
+            
+            .logo {
+                margin-bottom: 0;
+                margin-right: 1rem;
+            }
+            
+            .nav-item {
+                margin-bottom: 0;
+                margin-right: 1rem;
+            }
+            
+            .card-container {
+                grid-template-columns: 1fr;
+                padding: 0.5rem;
+            }
+            
+            .disease-content {
+                flex-direction: column;
+                min-height: auto;
+            }
+            
+            .disease-text, .disease-image {
+                max-width: 100%;
+                height: auto;
+            }
+            
+            .disease-image {
+                height: 200px;
+            }
         }
     </style>
 </head>
 <body>
-    <video id="background-video" autoplay loop muted>
-        <source src="{{ url_for('static', filename='videos/herobgvid.mp4') }}" type="video/mp4">
+    <!-- Background video (uncomment to enable) -->
+    <!--
+    <video class="background-video" autoplay loop muted playsinline>
+        <source src="static/videos/herobgvid.mp4" type="video/mp4">
         Your browser does not support the video tag.
     </video>
-    
-    <header>
-        <h1>Lung Disease Detection System</h1>
-        <p>AI-powered detection for lung cancer, tuberculosis, and pneumonia</p>
-    </header>
+    <div class="overlay"></div>
+    -->
     
     <div class="container">
-        <div class="intro">
-            <h2>Early Detection Saves Lives</h2>
-            <p>Our advanced deep learning models analyze chest X-rays and CT scans to detect lung diseases with high accuracy.</p>
-            <p>Select one of our detection models below to get started.</p>
+        <div class="sidebar">
+            <div class="logo">
+                LungScan
+            </div>
+            <a href="/" class="nav-item active">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Home
+            </a>
+            <a href="/reports" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                report
+            </a>
+            <a href="/advisor" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                advisor
+            </a>
         </div>
         
-        <div class="models-container">
-            <div class="model-card">
-                <div class="model-image lung-cancer"></div>
-                <div class="model-info">
-                    <h3>Lung Cancer Detection</h3>
-                    <p>Early detection of lung cancer using advanced convolutional neural networks trained on thousands of CT scans.</p>
-                    <a href="{{ url_for('lung_cancer_page') }}" class="btn">Use This Model</a>
+        <div class="main-content">
+            <div class="header">
+                <!-- <div class="search-bar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" placeholder="Search">
+                </div> -->
+                
+                <a href="/login" class="login-btn">
+                    Login
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+            
+            <div class="tabs">
+                <a href="#" class="tab active" data-tab="cancer">Cancer</a>
+                <a href="#" class="tab" data-tab="tb">TB</a>
+                <a href="#" class="tab" data-tab="pneumonia">Pneumonia</a>
+            </div>
+            
+            <div id="cancer-info" class="disease-info active">
+                <h2><span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg></span> Lung Cancer</h2>
+                <div class="disease-content">
+                    <div class="disease-text">
+                        <p>Lung cancer, a leading global cause of cancer mortality, arises from uncontrolled cell growth in lung tissue. Symptoms include persistent cough, hemoptysis, dyspnea, chest pain, and weight loss. Risk factors include smoking, asbestos exposure, and family history. Our AI-powered detection system analyzes histopathological images to identify adenocarcinoma, squamous cell carcinoma, or benign tissue with 97% accuracy. Trained on over 15,000 images, it detects subtle patterns like irregular nodules or spiculated masses, enabling early intervention. Upload your screening reports to leverage our cutting-edge technology for precise diagnosis and timely treatment planning.</p>
+                    </div>
+                    <div class="disease-image">
+                        <img src="static/images/cancer/lungcancerhero.jpeg" alt="Lung Cancer Visualization">
+                    </div>
                 </div>
             </div>
             
-            <div class="model-card">
-                <div class="model-image tuberculosis"></div>
-                <div class="model-info">
-                    <h3>Tuberculosis Detection</h3>
-                    <p>Identify tuberculosis patterns in chest X-rays with our model trained on clinical datasets from around the world.</p>
-                    <a href="{{ url_for('tuberculosis_page') }}" class="btn">Use This Model</a>
+            <div id="tb-info" class="disease-info">
+                <h2><span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg></span> Tuberculosis</h2>
+                <div class="disease-content">
+                    <div class="disease-text">
+                        <p>Tuberculosis (TB), caused by Mycobacterium tuberculosis, is a major infectious disease affecting the lungs. Symptoms include chronic cough, night sweats, fever, weight loss, and hemoptysis. Risk factors include HIV, crowded living conditions, and immunocompromise. Our AI system, trained on 12,000 chest X-rays and CT scans, detects TB with 94% accuracy, identifying cavitary lesions, miliary nodules, and tree-in-bud patterns. This enables rapid diagnosis in high-risk populations. Submit your TB screening reports to our platform for precise analysis and early treatment, reducing the spread and severity of this curable disease.</p>
+                    </div>
+                    <div class="disease-image">
+                        <img src="static/images/tb/tbhero.jpeg" alt="Tuberculosis Visualization">
+                    </div>
                 </div>
             </div>
             
-            <div class="model-card">
-                <div class="model-image pneumonia"></div>
-                <div class="model-info">
-                    <h3>Pneumonia Detection</h3>
-                    <p>Quickly detect pneumonia in chest X-rays using our model that can differentiate between viral and bacterial pneumonia.</p>
-                    <a href="{{ url_for('pneumonia_page') }}" class="btn">Use This Model</a>
+            <div id="pneumonia-info" class="disease-info">
+                <h2><span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg></span> Pneumonia</h2>
+                <div class="disease-content">
+                    <div class="disease-text">
+                        <p>Pneumonia, an infection of the lung’s alveoli, is caused by bacteria, viruses, or fungi, leading to cough, fever, dyspnea, and chest pain. Risk factors include chronic lung disease, immunocompromise, and smoking. Our AI model, trained on 10,000 CT scans, achieves 94% accuracy in detecting consolidation, ground-glass opacities, and air bronchograms, distinguishing bacterial from viral pneumonia. This aids in selecting appropriate treatments. Upload your diagnostic reports to our platform for fast, accurate analysis, enabling timely intervention to manage this potentially life-threatening condition effectively.</p>
+                    </div>
+                    <div class="disease-image">
+                        <img src="static/images/pnuem/pnuemhero.jpeg" alt="Pneumonia Visualization">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-container">
+                <div class="card" data-disease="cancer" onclick="navigateTo('/lung-cancer')">
+                    <div class="card-icon cancer-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="card-content">
+                        <h3>Lung Cancer Detection</h3>
+                        <p>Submit lung cancer screening reports</p>
+                    </div>
+                </div>
+                
+                <div class="card" data-disease="tb" onclick="navigateTo('/tuberculosis')">
+                    <div class="card-icon tb-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="card-content">
+                        <h3>TB Screening</h3>
+                        <p>Submit tuberculosis screening reports</p>
+                    </div>
+                </div>
+                
+                <div class="card" data-disease="pneumonia" onclick="navigateTo('/pneumonia')">
+                    <div class="card-icon pneumonia-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="card-content">
+                        <h3>Pneumonia Assessment</h3>
+                        <p>Submit pneumonia diagnostic reports</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <footer>
-        <p>&copy; 2025 Lung Disease Detection System. All rights reserved.</p>
-    </footer>
+    <script>
+        // Navigation function with error handling
+        function navigateTo(page) {
+            try {
+                window.location.href = page;
+            } catch (error) {
+                console.error(`Failed to navigate to ${page}:`, error);
+                alert('Sorry, the requested page is not available.');
+            }
+        }
+
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            const diseaseInfos = document.querySelectorAll('.disease-info');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Hide all disease info sections
+                    diseaseInfos.forEach(info => info.classList.remove('active'));
+                    
+                    // Show the corresponding disease info
+                    const diseaseId = this.getAttribute('data-tab');
+                    document.getElementById(`${diseaseId}-info`).classList.add('active');
+                });
+            });
+            
+            // Card hover effects
+            const cards = document.querySelectorAll('.card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    const diseaseId = this.getAttribute('data-disease');
+                    
+                    // Switch to the corresponding tab
+                    tabs.forEach(t => {
+                        if (t.getAttribute('data-tab') === diseaseId) {
+                            t.click();
+                        }
+                    });
+                });
+            });
+            
+            // Animate elements on page load
+            function animateElements() {
+                const elements = document.querySelectorAll('.card, .tab, .search-bar, .login-btn');
+                
+                elements.forEach((element, index) => {
+                    setTimeout(() => {
+                        element.style.opacity = '0';
+                        element.style.transform = 'translateY(20px)';
+                        element.style.transition = 'all 0.5s ease';
+                        
+                        setTimeout(() => {
+                            element.style.opacity = '1';
+                            element.style.transform = 'translateY(0)';
+                        }, 100);
+                    }, index * 100);
+                });
+            }
+            
+            animateElements();
+
+            // Error handling for image loading
+            const images = document.querySelectorAll('.disease-image img');
+            images.forEach(img => {
+                img.onerror = () => {
+                    img.src = '/static/images/placeholder.jpg';
+                    img.alt = 'Image failed to load';
+                };
+            });
+        });
+    </script>
 </body>
 </html>
