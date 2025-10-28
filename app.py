@@ -3,7 +3,6 @@ import os
 import numpy as np
 import cv2
 from werkzeug.utils import secure_filename
-import tensorflow as tf
 from datetime import datetime
 import uuid
 import locale
@@ -14,10 +13,34 @@ from reportlab.lib.utils import ImageReader
 import json
 import sys
 import io
-import io
 from flask_ngrok import run_with_ngrok
-from flask import Flask, Response
-import matplotlib.pyplot as plt
+import tensorflow as tf
+
+# === Model download section ===
+
+MODEL_DIR = "models"
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+# Google Drive File IDs (replace these with YOUR IDs)
+MODEL_IDS = {
+    "lung_cancer_model.h5": "1IuBs4zJjDRt-r5ershRjWxn3u4_aQhb7",
+    "pneumonia_model.h5": "1tayAtpf4i2xEWbsRR4wOsQXoEjV_VzPj",
+    "tuberculosis_model.h5": "1RgH32TxcvPZQUDn3QCb-FsKadkJjUkMK"
+}
+
+def download_model(name, file_id):
+    """Download a model from Google Drive if not already present."""
+    path = os.path.join(MODEL_DIR, name)
+    if not os.path.exists(path):
+        print(f"🔽 Downloading {name} ...")
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, path, quiet=False)
+    return path
+
+# Download models once on startup
+LUNG_CANCER_MODEL = load_model(download_model("lung_cancer_model.h5", MODEL_IDS["lung_cancer_model.h5"]))
+PNEUMONIA_MODEL = load_model(download_model("pneumonia_model.h5", MODEL_IDS["pneumonia_model.h5"]))
+TUBERCULOSIS_MODEL = load_model(download_model("tuberculosis_model.h5", MODEL_IDS["tuberculosis_model.h5"]))
 
 
 # Set locale to UTF-8 to avoid encoding issues
@@ -110,6 +133,30 @@ def preprocess_image_pneumonia(image_path, target_size=(256, 256)):
     img = cv2.resize(img, target_size)  # Resize to 256x256
     img = img / 255.0  # Normalize
     return np.expand_dims(img, axis=0)  # Add batch dimension
+
+def enhance_image(image_path):
+    """Enhance an X-ray image using OpenCV (contrast adjustment and sharpening)."""
+    try:
+        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            raise ValueError(f"Could not read image at {image_path}")
+        
+        # Apply histogram equalization to improve contrast
+        img_equalized = cv2.equalizeHist(img)
+        
+        # Apply sharpening using a kernel
+        sharpening_kernel = np.array([[-1, -1, -1],
+                                    [-1,  9, -1],
+                                    [-1, -1, -1]])
+        img_sharpened = cv2.filter2D(img_equalized, -1, sharpening_kernel)
+        
+        # Save enhanced image
+        enhanced_filename = image_path.replace('.', '_enhanced.')
+        cv2.imwrite(enhanced_filename, img_sharpened)
+        return os.path.basename(enhanced_filename)
+    except Exception as e:
+        print(f"Error enhancing image: {e}")
+        raise
 
 def generate_occlusion_map(model, preprocessed_img, file_path, class_idx, patch_size=20, stride=8):
     """
@@ -244,201 +291,54 @@ def tuberculosis_page():
 def tuberculosis_results():
     return render_template('tuberculosis-results.html')
 
-
 @app.route('/pneumonia')
 def pneumonia_page():
     return render_template('pneumonia.html')
 
-# @app.route('/detect/<disease_type>', methods=['POST'])
-# def detect_disease(disease_type):
-#     if 'image' not in request.files:
-#         return jsonify({'error': 'No image part'}), 400
+@app.route('/enhance')
+def enhance_page():
+    return render_template('enhance.html')
+
+@app.route('/enhance-image', methods=['POST'])
+def enhance_image_route():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image part'}), 400
     
-#     file = request.files['image']
-#     if file.filename == '':
-#         return jsonify({'error': 'No selected file'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
     
-#     if file and allowed_file(file.filename):
-#         # Sanitize filename to remove non-ASCII characters
-#         filename = sanitize_filename(secure_filename(file.filename))
-#         unique_filename = f"{uuid.uuid4()}_{filename}"
-#         file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    if file and allowed_file(file.filename):
+        # Sanitize filename to remove non-ASCII characters
+        filename = sanitize_filename(secure_filename(file.filename))
+        unique_filename = f"{uuid.uuid4()}_{filename}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         
-#         try:
-#             # Save the file with UTF-8 encoding
-#             file.save(file_path)
-#         except Exception as e:
-#             print(f"Error saving file: {e}")
-#             return jsonify({'error': 'Error saving file. Please check the file name and try again.'}), 500
+        try:
+            # Save the file with UTF-8 encoding
+            file.save(file_path)
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            return jsonify({'error': 'Error saving file. Please check the file name and try again.'}), 500
         
-#         try:
-#             # Preprocess the image based on disease type
-#             if disease_type == 'pneumonia':
-#                 preprocessed_img = preprocess_image_pneumonia(file_path)
-#             else:
-#                 preprocessed_img = preprocess_image(file_path)  # Use the existing function for other models
+        try:
+            # Enhance the image
+            enhanced_filename = enhance_image(file_path)
             
-#             print(f"Preprocessed image shape: {preprocessed_img.shape}")  # Debugging
-            
-#             # Select the appropriate model based on disease_type
-#             if disease_type == 'lung-cancer':
-#                 model = lung_cancer_model
-#             elif disease_type == 'tuberculosis':
-#                 model = tuberculosis_model
-#             elif disease_type == 'pneumonia':
-#                 model = pneumonia_model
-#             else:
-#                 return jsonify({'error': 'Invalid disease type'}), 400
-            
-#             if model is None:
-#                 print(f"Model for {disease_type} is not available. Check if the model file exists and is valid.")
-#                 return jsonify({'error': f'Model for {disease_type} is not available'}), 500
-            
-#             # Make prediction
-#             if disease_type == 'lung-cancer':
-#                 # Multi-class prediction for lung cancer (3 classes)
-#                 predictions = model.predict(preprocessed_img)[0]
-#                 predicted_class_idx = np.argmax(predictions)
-#                 confidence_percent = round(float(predictions[predicted_class_idx]) * 100, 2)
-#                 predicted_class = LUNG_CANCER_CLASSES[predicted_class_idx]
-                
-#                 # Generate heatmap using occlusion sensitivity
-#                 heatmap_filename = generate_occlusion_map(
-#                     model=model,
-#                     preprocessed_img=preprocessed_img,
-#                     file_path=file_path,
-#                     class_idx=predicted_class_idx,
-#                     patch_size=20,
-#                     stride=8
-#                 )
-#             elif disease_type == 'tuberculosis':
-#                 # Binary prediction for tuberculosis
-#                 prediction = model.predict(preprocessed_img)[0][0]
-#                 print(f"Raw TB prediction value: {prediction}")  # Debug output
-                
-#                 # Adjust threshold for TB detection (may need tuning)
-#                 is_positive = prediction > 0.4  # Lowered from 0.5
-#                 confidence = float(prediction) if is_positive else float(1 - prediction)
-#                 confidence_percent = round(confidence * 100, 2)
-#                 predicted_class = "positive" if is_positive else "negative"
-                
-#                 # Generate proper heatmap for TB using occlusion sensitivity
-#                 heatmap_filename = generate_occlusion_map(
-#                     model=model,
-#                     preprocessed_img=preprocessed_img,
-#                     file_path=file_path,
-#                     class_idx=0,  # For binary classification
-#                     patch_size=24,  # Larger patch size for TB
-#                     stride=12
-#                 )
-#             else:  # pneumonia
-#                 # Binary prediction for pneumonia
-#                 prediction = model.predict(preprocessed_img)[0][0]
-#                 is_positive = prediction > 0.5
-#                 confidence = float(prediction) if is_positive else float(1 - prediction)
-#                 confidence_percent = round(confidence * 100, 2)
-#                 predicted_class = "Positive" if is_positive else "Negative"
-                
-#                 # Generate basic heatmap for pneumonia
-#                 original_img = cv2.imread(file_path)
-#                 # Generate a simple placeholder heatmap
-#                 heatmap = np.zeros((original_img.shape[0], original_img.shape[1]), dtype=np.uint8)
-#                 center_x, center_y = original_img.shape[1] // 2, original_img.shape[0] // 2
-#                 cv2.circle(heatmap, (center_x, center_y), radius=min(center_x, center_y) // 2, color=255, thickness=-1)
-#                 heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-#                 overlay = cv2.addWeighted(original_img, 0.7, heatmap_colored, 0.3, 0)
-#                 heatmap_path = file_path.replace('.', '_heatmap.')
-#                 cv2.imwrite(heatmap_path, overlay)
-#                 heatmap_filename = os.path.basename(heatmap_path)
-            
-#             # Get user details from the form
-#             patient_name = request.form.get('patientName')
-#             patient_age = request.form.get('patientAge')
-#             patient_gender = request.form.get('patientGender')
-#             patient_contact = request.form.get('patientContact')
-            
-#             # Create result object
-#             result = {
-#                 'original_image': unique_filename,
-#                 'annotated_image': heatmap_filename,
-#                 'prediction': predicted_class,
-#                 'confidence': confidence_percent,
-#                 'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # Simplified timestamp format
-#                 'details': [],
-#                 'disease_type': disease_type,  # Add disease type for the download report
-#                 'patient_name': patient_name,
-#                 'patient_age': patient_age,
-#                 'patient_gender': patient_gender,
-#                 'patient_contact': patient_contact
-#             }
-            
-#             # Add findings based on prediction
-#             if disease_type == 'lung-cancer':
-#                 if predicted_class == LUNG_CANCER_CLASSES[0]:  # Lung Adenocarcinoma
-#                     result['details'] = [
-#                         "Irregular nodular patterns detected in lung tissue",
-#                         "Ground-glass opacity patterns observed",
-#                         "Predominant peripheral distribution in the lungs",
-#                         "Consistent with adenocarcinoma histopathology"
-#                     ]
-#                 elif predicted_class == LUNG_CANCER_CLASSES[1]:  # Lung Benign Tissue
-#                     result['details'] = [
-#                         "Normal lung parenchyma texture",
-#                         "No suspicious nodules or masses detected",
-#                         "Clear airway passages visible",
-#                         "Healthy tissue patterns throughout the scan"
-#                     ]
-#                 elif predicted_class == LUNG_CANCER_CLASSES[2]:  # Lung Squamous Cell Carcinoma
-#                     result['details'] = [
-#                         "Central mass detected in bronchial region",
-#                         "Cavitation signs present",
-#                         "Thickened bronchial walls observed",
-#                         "Pattern consistent with squamous cell histopathology"
-#                     ]
-#             elif disease_type == 'tuberculosis':
-#                 if predicted_class == "positive":
-#                     result['details'] = [
-#                         "Infiltrates detected in upper lobes",
-#                         "Fibrotic changes present",
-#                         "Cavity formation observed",
-#                         "Possible signs of active tuberculosis"
-#                     ]
-#                 else:
-#                     result['details'] = [
-#                         "Normal lung parenchyma pattern",
-#                         "No significant abnormalities detected",
-#                         "No signs of cavitation or fibrosis",
-#                         "No indicators of active tuberculosis"
-#                     ]
-#             elif disease_type == 'pneumonia' and predicted_class == "Positive":
-#                 result['details'] = [
-#                     "Consolidation present in lower lobes",
-#                     "Air bronchograms visible",
-#                     "Pleural effusion detected",
-#                     "Possible bacterial pneumonia"
-#                 ]
-#             else:  # pneumonia negative
-#                 result['details'] = [
-#                     "Clear lung fields",
-#                     "No significant consolidation",
-#                     "Normal bronchial patterns",
-#                     "No signs of pneumonia detected"
-#                 ]
-            
-#             # Redirect to results page with the session ID
-#             return jsonify({
-#                 'success': True,
-#                 'redirect': f'/{disease_type}-results',
-#                 'result': result
-#             })
+            # Return the paths to both original and enhanced images
+            return jsonify({
+                'success': True,
+                'original_image': unique_filename,
+                'enhanced_image': enhanced_filename
+            })
         
-#         except Exception as e:
-#             print(f"Error processing image: {e}")
-#             print(f"File path: {file_path}")
-#             print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-#             return jsonify({'error': f'Error processing image: {str(e)}'}), 500
+        except Exception as e:
+            print(f"Error processing image: {e}")
+            print(f"File path: {file_path}")
+            print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            return jsonify({'error': f'Error processing image: {str(e)}'}), 500
     
-#     return jsonify({'error': 'File type not allowed'}), 400
+    return jsonify({'error': 'File type not allowed'}), 400
 
 @app.route('/detect/<disease_type>', methods=['POST'])
 def detect_disease(disease_type):
@@ -613,6 +513,7 @@ def detect_disease(disease_type):
             return jsonify({'error': f'Error processing image: {str(e)}'}), 500
     
     return jsonify({'error': 'File type not allowed'}), 400
+
 @app.route('/download-report/<disease_type>', methods=['GET'])
 def download_report(disease_type):
     # Retrieve the result from sessionStorage (passed as a query parameter)

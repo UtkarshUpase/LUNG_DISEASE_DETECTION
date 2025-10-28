@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LungScan - X-ray Image Enhancement</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(18, 18, 18, 0.7), rgba(18, 18, 18, 0.9));
+            z-index: -1;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .sidebar {
+            width: 120px;
+            background-color: rgba(18, 18, 18, 0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(44, 44, 44, 0.5);
+            padding: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        
+        .logo {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white;
+            text-align: center;
+            margin-bottom: 3rem;
+            line-height: 1.2;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .logo::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: #6c5ce7;
+            transition: width 0.3s ease;
+        }
+        
+        .logo:hover::after {
+            width: 80%;
+        }
+        
+        .nav-item {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            color: #a0a0a0;
+            text-decoration: none;
+            font-size: 0.8rem;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(108, 92, 231, 0.1);
+            border-radius: 12px;
+            transform: scale(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .nav-item:hover::before, .nav-item.active::before {
+            transform: scale(1);
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            color: white;
+            transform: translateY(-5px);
+        }
+        
+        .nav-item svg {
+            margin-bottom: 0.5rem;
+            width: 24px;
+            height: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item:hover svg, .nav-item.active svg {
+            transform: scale(1.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            z-index: 1;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .login-btn {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            background-color: rgba(30, 35, 48, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.1);
+        }
+        
+        .login-btn:hover {
+            background-color: rgba(108, 92, 231, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+        
+        .login-btn svg {
+            margin-left: 0.5rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .login-btn:hover svg {
+            transform: translateX(5px);
+        }
+        
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(30, 35, 48, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            min-height: 300px;
+            text-align: center;
+        }
+        
+        .upload-section h2 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+        
+        .upload-box {
+            border: 2px dashed rgba(108, 92, 231, 0.5);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-box:hover {
+            border-color: #6c5ce7;
+            background-color: rgba(108, 92, 231, 0.1);
+        }
+        
+        .upload-box svg {
+            width: 40px;
+            height: 40px;
+            color: #6c5ce7;
+            margin-bottom: 1rem;
+        }
+        
+        .upload-box p {
+            color: #a0a0a0;
+            font-size: 1rem;
+        }
+        
+        .upload-box input {
+            display: none;
+        }
+        
+        .enhance-btn {
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #6c5ce7;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .enhance-btn:hover {
+            background-color: #5a4cc5;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+        }
+        
+        .enhance-btn:disabled {
+            background-color: #4a406e;
+            cursor: not-allowed;
+        }
+        
+        .result-section {
+            display: none;
+            margin-top: 2rem;
+            background-color: rgba(30, 35, 48, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .result-section.active {
+            display: block;
+        }
+        
+        .image-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .image-box {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .image-box img {
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .image-box p {
+            margin-top: 0.5rem;
+            color: white;
+            font-size: 1.1rem;
+        }
+        
+        .download-btn {
+            margin-top: 1rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .download-btn:hover {
+            background-color: #3d8b40;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 1rem;
+                border-right: none;
+                border-bottom: 1px solid rgba(44, 44, 44, 0.5);
+            }
+            
+            .logo {
+                margin-bottom: 0;
+                margin-right: 1rem;
+            }
+            
+            .nav-item {
+                margin-bottom: 0;
+                margin-right: 1rem;
+            }
+            
+            .image-box {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                LungScan
+            </div>
+            <a href="/" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Home
+            </a>
+            <a href="/reports" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                report
+            </a>
+            <a href="/advisor" class="nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                advisor
+            </a>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <a href="/login" class="login-btn">
+                    Login
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+            
+            <div class="upload-section">
+                <h2>X-ray Image Enhancement</h2>
+                <div class="upload-box" id="uploadBox">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p id="uploadText">Upload X-ray Image<br>Click or drag & drop your X-ray image here</p>
+                    <input type="file" id="imageInput" accept="image/png,image/jpeg,image/jpg">
+                </div>
+                <button class="enhance-btn" id="enhanceBtn" disabled>Enhance X-ray Image</button>
+            </div>
+            
+            <div class="result-section" id="resultSection">
+                <div class="image-container">
+                    <div class="image-box">
+                        <img id="originalImage" src="" alt="Original Image">
+                        <p>Original Image</p>
+                    </div>
+                    <div class="image-box">
+                        <img id="enhancedImage" src="" alt="Enhanced Image">
+                        <p>Enhanced Image</p>
+                        <a id="downloadBtn" class="download-btn" href="#" download>Download Enhanced Image</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadBox = document.getElementById('uploadBox');
+            const imageInput = document.getElementById('imageInput');
+            const uploadText = document.getElementById('uploadText');
+            const enhanceBtn = document.getElementById('enhanceBtn');
+            const resultSection = document.getElementById('resultSection');
+            const originalImage = document.getElementById('originalImage');
+            const enhancedImage = document.getElementById('enhancedImage');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            // Handle click on upload box
+            uploadBox.addEventListener('click', function() {
+                imageInput.click();
+            });
+
+            // Handle drag and drop
+            uploadBox.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadBox.style.borderColor = '#6c5ce7';
+            });
+
+            uploadBox.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadBox.style.borderColor = 'rgba(108, 92, 231, 0.5)';
+            });
+
+            uploadBox.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadBox.style.borderColor = 'rgba(108, 92, 231, 0.5)';
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    imageInput.files = files;
+                    updateUploadText(files[0]);
+                    enhanceBtn.disabled = false;
+                }
+            });
+
+            // Handle file selection
+            imageInput.addEventListener('change', function() {
+                if (imageInput.files.length > 0) {
+                    updateUploadText(imageInput.files[0]);
+                    enhanceBtn.disabled = false;
+                }
+            });
+
+            // Update upload text with file name
+            function updateUploadText(file) {
+                uploadText.innerHTML = `Selected File: ${file.name}`;
+            }
+
+            // Handle enhance button click
+            enhanceBtn.addEventListener('click', function() {
+                const file = imageInput.files[0];
+                if (!file) {
+                    alert('Please select an image to enhance.');
+                    return;
+                }
+
+                enhanceBtn.disabled = true;
+                enhanceBtn.textContent = 'Enhancing...';
+
+                const formData = new FormData();
+                formData.append('image', file);
+
+                fetch('/enhance-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Display the result section
+                        resultSection.classList.add('active');
+
+                        // Set image sources
+                        const originalUrl = `/static/uploads/${data.original_image}`;
+                        const enhancedUrl = `/static/uploads/${data.enhanced_image}`;
+                        originalImage.src = originalUrl;
+                        enhancedImage.src = enhancedUrl;
+
+                        // Set download link
+                        downloadBtn.href = enhancedUrl;
+                        downloadBtn.download = data.enhanced_image;
+
+                        // Reset button
+                        enhanceBtn.textContent = 'Enhance X-ray Image';
+                        enhanceBtn.disabled = false;
+                    } else {
+                        alert('Error: ' + data.error);
+                        enhanceBtn.textContent = 'Enhance X-ray Image';
+                        enhanceBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error enhancing image:', error);
+                    alert('Failed to enhance image. Please try again.');
+                    enhanceBtn.textContent = 'Enhance X-ray Image';
+                    enhanceBtn.disabled = false;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

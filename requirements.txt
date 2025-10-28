@@ -1,1 +1,8 @@
+Flask
 gunicorn
+tensorflow
+keras
+numpy
+pillow
+opencv-python
+gdown
