@@ -2,6 +2,32 @@ document.addEventListener("DOMContentLoaded", function () {
   const form = document.querySelector("form");
   if (!form) return;
 
+  const imageUploadInput = document.getElementById("imageUpload");
+  const previewContainer = document.getElementById("previewContainer");
+  const imagePreview = document.getElementById("imagePreview");
+  const fileInputText = document.querySelector(".file-input-container p"); // Get the "Drag & drop" text
+
+  if (imageUploadInput && previewContainer && imagePreview && fileInputText) {
+    imageUploadInput.addEventListener("change", function () {
+      const file = this.files[0];
+      if (file) {
+        // A file is selected
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          imagePreview.src = e.target.result;
+          previewContainer.style.display = "block";
+          fileInputText.textContent = `Selected file: ${file.name}`; // Update text
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // No file selected
+        imagePreview.src = "";
+        previewContainer.style.display = "none";
+        fileInputText.textContent = "Drag & drop or click to select a chest CT scan"; // Reset text
+      }
+    });
+  }
+
   const progressBar = document.getElementById("progressBar");
   const progressStatus = document.getElementById("progressStatus");
   const loadingIndicator = document.getElementById("loadingIndicator");
