@@ -47,8 +47,15 @@ def download_model(name, file_id):
         print(f"✅ {name} already present.")
     return path
 
-# Set locale to UTF-8 to avoid encoding issues
-locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+# # Set locale to UTF-8 to avoid encoding issues
+# locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+try:
+    locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+except locale.Error:
+    locale.setlocale(locale.LC_ALL, '')
+    print("⚠️ Locale 'en_US.UTF-8' not available. Using default locale.")
+
 
 # Set UTF-8 encoding for stdout and stderr
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
