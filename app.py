@@ -30,12 +30,6 @@ MODEL_IDS = {
     "pneumonia_model.h5": os.getenv("PNEUMONIA_MODEL_ID"),
     "tuberculosis_model.h5": os.getenv("TB_MODEL_ID")
 }
-
-# Check if any IDs missing
-for name, fid in MODEL_IDS.items():
-    if not fid:
-        raise ValueError(f"❌ Missing environment variable for {name}. Please set it in Render.")
-
 def download_model(name, file_id):
     """Download a model from Google Drive if not already present."""
     path = os.path.join(MODEL_DIR, name)
@@ -44,8 +38,20 @@ def download_model(name, file_id):
         url = f"https://drive.google.com/uc?id={file_id}"
         gdown.download(url, path, quiet=False)
     else:
-        print(f"✅ {name} already present.")
+        print(f"✅ {name} already exists, skipping download.")
     return path
+
+# === Download models from Google Drive before loading ===
+for name, fid in MODEL_IDS.items():
+    if fid:
+        try:
+            print(f"🔽 Checking {name} ...")
+            download_model(name, fid)
+        except Exception as e:
+            print(f"❌ Failed to download {name}: {e}")
+    else:
+        print(f"⚠️ No Drive file ID found for {name}. Skipping download.")
+
 
 # # Set locale to UTF-8 to avoid encoding issues
 # locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
