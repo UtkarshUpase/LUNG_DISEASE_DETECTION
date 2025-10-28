@@ -146,43 +146,43 @@ def enhance_image(image_path):
         print(f"Error enhancing image: {e}")
         raise
 
-def generate_occlusion_map(model, preprocessed_img, file_path, class_idx, patch_size=20, stride=8):
-    """Generate occlusion sensitivity heatmap and save annotated image in the uploads folder."""
-    print(f"Running occlusion sensitivity analysis (patch_size={patch_size}, stride={stride})...")
-    img = cv2.imread(file_path)
-    if img is None:
-        raise ValueError(f"Could not read image at {file_path}")
+# def generate_occlusion_map(model, preprocessed_img, file_path, class_idx, patch_size=20, stride=8):
+#     """Generate occlusion sensitivity heatmap and save annotated image in the uploads folder."""
+#     print(f"Running occlusion sensitivity analysis (patch_size={patch_size}, stride={stride})...")
+#     img = cv2.imread(file_path)
+#     if img is None:
+#         raise ValueError(f"Could not read image at {file_path}")
 
-    original_img = cv2.resize(img, (224, 224))
-    img_array = preprocessed_img.copy()
+#     original_img = cv2.resize(img, (224, 224))
+#     img_array = preprocessed_img.copy()
 
-    baseline_pred = model.predict(img_array, verbose=0)[0][class_idx]
+#     baseline_pred = model.predict(img_array, verbose=0)[0][class_idx]
 
-    heatmap = np.zeros((224, 224), dtype=np.float32)
-    total_patches = ((224 - patch_size) // stride + 1) * ((224 - patch_size) // stride + 1)
-    patches_done = 0
+#     heatmap = np.zeros((224, 224), dtype=np.float32)
+#     total_patches = ((224 - patch_size) // stride + 1) * ((224 - patch_size) // stride + 1)
+#     patches_done = 0
 
-    for y in range(0, 224 - patch_size + 1, stride):
-        for x in range(0, 224 - patch_size + 1, stride):
-            occluded_img = np.copy(img_array)
-            occluded_img[0, y:y+patch_size, x:x+patch_size, :] = 0.5
-            occluded_pred = model.predict(occluded_img, verbose=0)[0][class_idx]
-            diff = baseline_pred - occluded_pred
-            heatmap[y:y+patch_size, x:x+patch_size] += diff
-            patches_done += 1
-            if patches_done % 20 == 0:
-                print(f"Processed {patches_done}/{total_patches} patches ({(patches_done/total_patches)*100:.1f}%)")
+#     for y in range(0, 224 - patch_size + 1, stride):
+#         for x in range(0, 224 - patch_size + 1, stride):
+#             occluded_img = np.copy(img_array)
+#             occluded_img[0, y:y+patch_size, x:x+patch_size, :] = 0.5
+#             occluded_pred = model.predict(occluded_img, verbose=0)[0][class_idx]
+#             diff = baseline_pred - occluded_pred
+#             heatmap[y:y+patch_size, x:x+patch_size] += diff
+#             patches_done += 1
+#             if patches_done % 20 == 0:
+#                 print(f"Processed {patches_done}/{total_patches} patches ({(patches_done/total_patches)*100:.1f}%)")
 
-    heatmap = np.maximum(heatmap, 0)
-    if np.max(heatmap) > 0:
-        heatmap = heatmap / np.max(heatmap)
+#     heatmap = np.maximum(heatmap, 0)
+#     if np.max(heatmap) > 0:
+#         heatmap = heatmap / np.max(heatmap)
 
-    heatmap_colored = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
-    superimposed_img = cv2.addWeighted(original_img, 0.7, heatmap_colored, 0.3, 0)
+#     heatmap_colored = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+#     superimposed_img = cv2.addWeighted(original_img, 0.7, heatmap_colored, 0.3, 0)
 
-    heatmap_filename = file_path.replace('.', '_heatmap.')
-    cv2.imwrite(heatmap_filename, superimposed_img)
-    return os.path.basename(heatmap_filename)
+#     heatmap_filename = file_path.replace('.', '_heatmap.')
+#     cv2.imwrite(heatmap_filename, superimposed_img)
+#     return os.path.basename(heatmap_filename)
 
 def generate_pdf_report(result, output_path):
     try:
@@ -302,6 +302,8 @@ def detect_disease(disease_type):
 
         if model is None:
             return jsonify({'error': 'Model not available'}), 500
+        
+        heatmap_filename=unique_filename
 
         # Predict and generate heatmap
         if disease_type == 'lung-cancer':
@@ -310,14 +312,14 @@ def detect_disease(disease_type):
             confidence_percent = round(float(predictions[predicted_class_idx]) * 100, 2)
             predicted_class = LUNG_CANCER_CLASSES[predicted_class_idx]
 
-            heatmap_filename = generate_occlusion_map(
-                model=model,
-                preprocessed_img=preprocessed_img,
-                file_path=file_path,
-                class_idx=predicted_class_idx,
-                patch_size=20,
-                stride=8
-            )
+            # heatmap_filename = generate_occlusion_map(
+            #     model=model,
+            #     preprocessed_img=preprocessed_img,
+            #     file_path=file_path,
+            #     class_idx=predicted_class_idx,
+            #     patch_size=20,
+            #     stride=8
+            # )
 
         elif disease_type in ('tuberculosis', 'pneumonia'):
             prediction = model.predict(preprocessed_img)[0][0]
@@ -327,14 +329,14 @@ def detect_disease(disease_type):
             confidence_percent = round(confidence * 100, 2)
             predicted_class = "positive" if is_positive else "negative"
 
-            heatmap_filename = generate_occlusion_map(
-                model=model,
-                preprocessed_img=preprocessed_img,
-                file_path=file_path,
-                class_idx=0,
-                patch_size=24 if disease_type == 'tuberculosis' else 28,
-                stride=12 if disease_type == 'tuberculosis' else 14
-            )
+            # heatmap_filename = generate_occlusion_map(
+            #     model=model,
+            #     preprocessed_img=preprocessed_img,
+            #     file_path=file_path,
+            #     class_idx=0,
+            #     patch_size=24 if disease_type == 'tuberculosis' else 28,
+            #     stride=12 if disease_type == 'tuberculosis' else 14
+            # )
         else:
             return jsonify({'error': 'Invalid disease type'}), 400
 
