@@ -476,15 +476,17 @@
     const resultElem = document.getElementById('resultIndicator');
     const resultDesc = document.getElementById('resultDescription');
 
-    if (result.prediction === 'adenocarcinoma') {
+    // FIX: Check against the full class names from app.py
+    if (result.prediction === 'Lung Adenocarcinoma') {
       resultElem.textContent = 'Adenocarcinoma detected';
       resultElem.classList.add('adenocarcinoma');
       resultDesc.textContent = 'The analysis indicates patterns consistent with adenocarcinoma, a type of lung cancer typically found in the outer areas of the lung. Immediate clinical evaluation by an oncologist is recommended.';
-    } else if (result.prediction === 'squamous') {
+    } else if (result.prediction === 'Lung Squamous Cell Carcinoma') {
       resultElem.textContent = 'Squamous Cell Carcinoma detected';
       resultElem.classList.add('squamous');
       resultDesc.textContent = 'The analysis suggests the presence of squamous cell carcinoma, often located in the central lung regions. Please refer this patient for urgent medical evaluation.';
     } else {
+      // This will now correctly catch 'Lung Benign Tissue'
       resultElem.textContent = 'Benign tissue detected';
       resultElem.classList.add('benign');
       resultDesc.textContent = 'The image does not show malignant patterns, indicating benign tissue. Further clinical assessment may be needed to confirm this result.';
