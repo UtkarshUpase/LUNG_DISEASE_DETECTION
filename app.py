@@ -23,9 +23,9 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Google Drive File IDs (replace these with YOUR IDs)
 MODEL_IDS = {
-    "lung_cancer_model.h5": "1IuBs4zJjDRt-r5ershRjWxn3u4_aQhb7",
-    "pneumonia_model.h5": "1tayAtpf4i2xEWbsRR4wOsQXoEjV_VzPj",
-    "tuberculosis_model.h5": "1RgH32TxcvPZQUDn3QCb-FsKadkJjUkMK"
+    "lung_cancer_model.h5": os.getenv("LUNG_MODEL_ID"),
+    "pneumonia_model.h5": os.getenv("PNEUMONIA_MODEL_ID"),
+    "tuberculosis_model.h5": os.getenv("TB_MODEL_ID")
 }
 
 def download_model(name, file_id):
@@ -546,5 +546,7 @@ def results_page(disease_type):
 
 run_with_ngrok(app)  # This enables a public URL
 
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
