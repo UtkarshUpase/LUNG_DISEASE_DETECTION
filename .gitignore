@@ -8,3 +8,5 @@ __pycache__/
 uploads/
 videos/
 /models/
+*.h5
+venv/

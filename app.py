@@ -15,6 +15,9 @@ import sys
 import io
 from flask_ngrok import run_with_ngrok
 import tensorflow as tf
+import gdown
+from tensorflow.keras.models import load_model
+
 
 # === Model download section ===
 
@@ -544,7 +547,7 @@ def results_page(disease_type):
     # For this example, we'll render the template with placeholder data
     return render_template(f'{disease_type}-results.html')
 
-run_with_ngrok(app)  # This enables a public URL
+# run_with_ngrok(app)  # This enables a public URL
 
 if __name__ == "__main__":
     import os
