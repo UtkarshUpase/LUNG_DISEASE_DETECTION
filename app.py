@@ -409,7 +409,11 @@ def detect_disease(disease_type):
 
         # Save result to session and redirect to the proper results page
         session['last_result'] = result
-        return redirect(url_for(f"{disease_type}_results"))
+        return jsonify({
+    'success': True,
+    'redirect': url_for(f"{disease_type}_results"),
+    'result': result
+})
 
     except Exception as e:
         print(f"Error processing image: {e}")

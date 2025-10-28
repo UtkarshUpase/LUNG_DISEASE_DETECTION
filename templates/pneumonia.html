@@ -427,7 +427,12 @@
 
       <div class="section">
         <h2>Upload Patient Image</h2>
-        <form id="uploadForm" enctype="multipart/form-data">
+        <form id="uploadForm"
+      action="/detect/pneumonia"
+      method="POST"
+      enctype="multipart/form-data"
+      onsubmit="showLoading()">
+
           <div class="form-group">
             <label for="patientName">Full Name</label>
             <input type="text" id="patientName" name="patientName" required />
@@ -645,5 +650,6 @@
       }
     }
   </script>
+  <script src="/static/script.js"></script>
 </body>
 </html>
