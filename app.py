@@ -517,9 +517,9 @@ DISEASE_TO_FILENAME = {
 }
 
 # === Layer Names Found by check_model.py ===
-# Using names found in your output. Pneumonia is left as placeholder to disable annotation.
+# Using names found in your output. Pneumonia is explicitly disabled below.
 LUNG_CANCER_CONV_LAYER = "conv2d_3"
-PNEUMONIA_CONV_LAYER = "YOUR_PNEUMONIA_LAYER_NAME_HERE" # Placeholder - check_model failed
+# PNEUMONIA_CONV_LAYER is no longer needed as Grad-CAM is disabled for it
 TUBERCULOSIS_CONV_LAYER = "conv2d_3"
 # ============================================
 
@@ -581,14 +581,13 @@ def get_model(disease_type):
     model_path = download_model_file(model_filename)
     print(f"🧠 Loading model from {model_path}...")
     try:
-        # Load model with compile=False if you are only doing inference
         model = load_model(model_path, compile=False)
         loaded_models[model_filename] = model
         print(f"✅ Model loaded: {model_filename}")
         return model
     except Exception as e:
         print(f"❌ ERROR loading model {model_filename}: {e}")
-        return None # Return None if loading fails
+        return None
 
 # === Image preprocessing / enhancement / visualization ===
 def preprocess_image(image_path, target_size=(224, 224)):
@@ -636,7 +635,6 @@ def generate_grad_cam(model, preprocessed_img, file_path, last_conv_layer_name):
 
     try:
         # === FIX: Ensure model is built by running a dummy prediction ===
-        # This forces Keras to define output shapes before creating grad_model
         _ = model(preprocessed_img, training=False)
         print("Model called once to ensure it's built.")
         # === END FIX ===
@@ -686,106 +684,54 @@ def generate_grad_cam(model, preprocessed_img, file_path, last_conv_layer_name):
 # === PDF Report Generation ===
 # =================================================================
 def generate_pdf_report(result, output_path):
-    # ... (generate_pdf_report function remains the same as previous version) ...
+    # ... (generate_pdf_report function remains the same) ...
     try:
         c = canvas.Canvas(output_path, pagesize=letter)
         width, height = letter # Get page dimensions
-
-        # --- Header ---
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(72, height - 50, "Lung Disease Detection Report")
-        c.line(72, height - 55, width - 72, height - 55)
-
-        # --- Patient Info ---
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(72, height - 80, "Patient Information")
-        c.setFont("Helvetica", 11)
-        textobject = c.beginText(72, height - 100)
-        textobject.textLine(f"Name: {result.get('patient_name','N/A')}")
-        textobject.textLine(f"Age: {result.get('patient_age','N/A')}")
-        textobject.textLine(f"Gender: {result.get('patient_gender','N/A')}")
-        textobject.textLine(f"Contact: {result.get('patient_contact','N/A')}")
-        textobject.textLine(f"Report Date: {result.get('timestamp','N/A')}")
-        c.drawText(textobject)
-
-        # --- Detection Summary ---
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(72, height - 180, "Detection Summary")
-        c.setFont("Helvetica", 11)
-        textobject = c.beginText(72, height - 200)
-        textobject.textLine(f"Analysis Type: {result.get('disease_type','N/A').replace('-', ' ').title()}")
-        textobject.textLine(f"Result: {result.get('prediction','N/A')}")
-        textobject.textLine(f"Confidence: {result.get('confidence','N/A')}%")
-        c.drawText(textobject)
-
-        # --- Detailed Findings ---
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(72, height - 260, "Detailed Findings")
-        c.setFont("Helvetica", 10)
-        y_position = height - 280
-        details = result.get('details', [])
+        c.setFont("Helvetica-Bold", 16); c.drawString(72, height - 50, "Lung Disease Detection Report"); c.line(72, height - 55, width - 72, height - 55)
+        c.setFont("Helvetica-Bold", 12); c.drawString(72, height - 80, "Patient Information"); c.setFont("Helvetica", 11)
+        textobject = c.beginText(72, height - 100); textobject.textLine(f"Name: {result.get('patient_name','N/A')}"); textobject.textLine(f"Age: {result.get('patient_age','N/A')}"); textobject.textLine(f"Gender: {result.get('patient_gender','N/A')}"); textobject.textLine(f"Contact: {result.get('patient_contact','N/A')}"); textobject.textLine(f"Report Date: {result.get('timestamp','N/A')}"); c.drawText(textobject)
+        c.setFont("Helvetica-Bold", 12); c.drawString(72, height - 180, "Detection Summary"); c.setFont("Helvetica", 11)
+        textobject = c.beginText(72, height - 200); textobject.textLine(f"Analysis Type: {result.get('disease_type','N/A').replace('-', ' ').title()}"); textobject.textLine(f"Result: {result.get('prediction','N/A')}"); textobject.textLine(f"Confidence: {result.get('confidence','N/A')}%"); c.drawText(textobject)
+        c.setFont("Helvetica-Bold", 12); c.drawString(72, height - 260, "Detailed Findings"); c.setFont("Helvetica", 10); y_position = height - 280
+        details = result.get('details', []);
         if details:
             for detail in details:
-                max_line_width = 75
-                lines = [f"- {detail[i:i+max_line_width]}" for i in range(0, len(detail), max_line_width)]
+                max_line_width = 75; lines = [f"- {detail[i:i+max_line_width]}" for i in range(0, len(detail), max_line_width)]
                 for line in lines:
-                    if y_position < 100:
-                         c.showPage(); y_position = height - 50; c.setFont("Helvetica", 10)
-                    c.drawString(85, y_position, line)
-                    y_position -= 15
-        else:
-             c.drawString(85, y_position, "- No specific findings listed."); y_position -= 15
-
-        # --- Images ---
-        img_y_start = y_position - 30
-        max_img_height = 180
-        max_img_width = (width - 144) / 2 - 20
-        original_image_path = os.path.join(app.config['UPLOAD_FOLDER'], result['original_image'])
-        annotated_image_path = os.path.join(app.config['UPLOAD_FOLDER'], result['annotated_image'])
+                    if y_position < 100: c.showPage(); y_position = height - 50; c.setFont("Helvetica", 10)
+                    c.drawString(85, y_position, line); y_position -= 15
+        else: c.drawString(85, y_position, "- No specific findings listed."); y_position -= 15
+        img_y_start = y_position - 30; max_img_height = 180; max_img_width = (width - 144) / 2 - 20
+        original_image_path = os.path.join(app.config['UPLOAD_FOLDER'], result['original_image']); annotated_image_path = os.path.join(app.config['UPLOAD_FOLDER'], result['annotated_image'])
         if img_y_start - max_img_height < 72: c.showPage(); img_y_start = height - 80
         c.setFont("Helvetica-Bold", 12); c.drawString(72, img_y_start, "Images"); img_y_start -= 20
-
-        # Draw Original Image
-        c.setFont("Helvetica", 10); c.drawString(72, img_y_start, "Original Image:")
-        img_y_current = img_y_start - (max_img_height + 10)
+        c.setFont("Helvetica", 10); c.drawString(72, img_y_start, "Original Image:"); img_y_current = img_y_start - (max_img_height + 10)
         if os.path.exists(original_image_path):
             try:
-                img_reader = ImageReader(original_image_path); img_width, img_height = img_reader.getSize()
-                aspect = img_height / float(img_width) if img_width else 1; display_width = max_img_width
-                display_height = display_width * aspect
+                img_reader = ImageReader(original_image_path); img_width, img_height = img_reader.getSize(); aspect = img_height / float(img_width) if img_width else 1; display_width = max_img_width; display_height = display_width * aspect
                 if display_height > max_img_height: display_height = max_img_height; display_width = display_height / aspect if aspect else max_img_width
                 c.drawImage(img_reader, 72, img_y_current, width=display_width, height=display_height, preserveAspectRatio=True, anchor='n')
             except Exception as img_e: print(f"Err draw orig PDF: {img_e}"); c.drawString(72, img_y_current + max_img_height/2, "[Err loading orig img]")
         else: c.drawString(72, img_y_current + max_img_height/2, "[Orig img not found]")
-
-        # Draw Annotated Image
-        img_x_start_annotated = 72 + max_img_width + 20
-        img_y_start_ann_title = img_y_start
-        img_y_current_ann = img_y_start - (max_img_height + 10)
+        img_x_start_annotated = 72 + max_img_width + 20; img_y_start_ann_title = img_y_start; img_y_current_ann = img_y_start - (max_img_height + 10)
         c.setFont("Helvetica", 10)
         if result['original_image'] != result['annotated_image']:
             c.drawString(img_x_start_annotated, img_y_start_ann_title, "Annotated Image (Grad-CAM):")
             if os.path.exists(annotated_image_path):
                 try:
-                    img_reader_ann = ImageReader(annotated_image_path); img_width_ann, img_height_ann = img_reader_ann.getSize()
-                    aspect_ann = img_height_ann / float(img_width_ann) if img_width_ann else 1; display_width_ann = max_img_width
-                    display_height_ann = display_width_ann * aspect_ann
+                    img_reader_ann = ImageReader(annotated_image_path); img_width_ann, img_height_ann = img_reader_ann.getSize(); aspect_ann = img_height_ann / float(img_width_ann) if img_width_ann else 1; display_width_ann = max_img_width; display_height_ann = display_width_ann * aspect_ann
                     if display_height_ann > max_img_height: display_height_ann = max_img_height; display_width_ann = display_height_ann / aspect_ann if aspect_ann else max_img_width
                     c.drawImage(img_reader_ann, img_x_start_annotated, img_y_current_ann, width=display_width_ann, height=display_height_ann, preserveAspectRatio=True, anchor='n')
                 except Exception as img_ann_e: print(f"Err draw ann PDF: {img_ann_e}"); c.drawString(img_x_start_annotated, img_y_current_ann + max_img_height/2, "[Err loading ann img]")
             else: c.drawString(img_x_start_annotated, img_y_current_ann + max_img_height/2, "[Ann img not found]")
         else:
-             reason = "Skipped (Placeholder Name)" if "YOUR_" in PNEUMONIA_CONV_LAYER and result.get('disease_type') == 'pneumonia' else "Failed / Skipped"
+             # Check if pneumonia was skipped due to placeholder
+             reason = "Skipped (Config)" if result.get('disease_type') == 'pneumonia' else "Failed / Skipped"
              c.drawString(img_x_start_annotated, img_y_start_ann_title, f"Annotation: {reason}")
-             c.rect(img_x_start_annotated, img_y_current_ann, max_img_width, max_img_height, stroke=1, fill=0)
-             c.drawCentredString(img_x_start_annotated + max_img_width / 2, img_y_current_ann + max_img_height / 2, "[No Annotation Available]")
-
-        # Footer Disclaimer
-        c.setFont("Helvetica-Oblique", 9)
-        c.drawString(72, 50, "Disclaimer: AI analysis for informational purposes only. Not a substitute for professional medical advice.")
-        c.drawString(72, 35, "Consult a qualified healthcare provider.")
-        c.save()
-        print(f"✅ PDF report generated: {output_path}")
+             c.rect(img_x_start_annotated, img_y_current_ann, max_img_width, max_img_height, stroke=1, fill=0); c.drawCentredString(img_x_start_annotated + max_img_width / 2, img_y_current_ann + max_img_height / 2, "[No Annotation Available]")
+        c.setFont("Helvetica-Oblique", 9); c.drawString(72, 50, "Disclaimer: AI analysis for informational purposes only. Not a substitute for professional medical advice."); c.drawString(72, 35, "Consult a qualified healthcare provider.")
+        c.save(); print(f"✅ PDF report generated: {output_path}")
     except Exception as e: import traceback; print(f"❌ Error generating PDF: {e}"); traceback.print_exc(); raise
 # =================================================================
 
@@ -811,7 +757,6 @@ def enhance_page(): return render_template('enhance.html')
 
 @app.route('/enhance-image', methods=['POST'])
 def enhance_image_route():
-    # ... (enhance_image_route remains the same) ...
     if 'image' not in request.files: return jsonify({'error': 'No image part'}), 400
     file = request.files['image'];
     if file.filename == '': return jsonify({'error': 'No selected file'}), 400
@@ -828,7 +773,7 @@ def enhance_image_route():
     return jsonify({'error': 'File type not allowed'}), 400
 
 # =================================================================
-# === detect_disease FUNCTION (Uses Fixed Grad-CAM) ===
+# === detect_disease FUNCTION (Updated Logic for Pneumonia) ===
 # =================================================================
 @app.route('/detect/<disease_type>', methods=['POST'])
 def detect_disease(disease_type):
@@ -846,10 +791,12 @@ def detect_disease(disease_type):
     heatmap_filename_base = unique_filename # Default to original
 
     try:
+        layer_name_constant = None # Initialize
         # Preprocess & Determine Layer Name
         if disease_type == 'pneumonia':
             preprocessed_img = preprocess_image_pneumonia(file_path)
-            layer_name_constant = PNEUMONIA_CONV_LAYER
+            # layer_name_constant = PNEUMONIA_CONV_LAYER # Keep this commented/placeholder
+            print("⚠️ SKIPPING Grad-CAM for Pneumonia (explicitly disabled).")
         elif disease_type == 'tuberculosis':
              preprocessed_img = preprocess_image(file_path)
              layer_name_constant = TUBERCULOSIS_CONV_LAYER
@@ -870,37 +817,34 @@ def detect_disease(disease_type):
             idx = int(np.argmax(predictions))
             conf = round(float(predictions[idx]) * 100, 2)
             pred_class = LUNG_CANCER_CLASSES[idx]
-            print(f"Lung Cancer Prediction Raw: {predictions}")
-            print(f"Lung Cancer Predicted Class: {pred_class} (Index: {idx}), Conf: {conf}%")
+            print(f"Lung Cancer Pred: {pred_class} ({conf}%)")
         else: # TB or Pneumonia
             pred_val = model.predict(preprocessed_img)[0][0]
             thresh = 0.4 if disease_type == 'tuberculosis' else 0.45
             is_pos = pred_val > thresh
             conf = round(float(pred_val if is_pos else 1 - pred_val) * 100, 2)
             pred_class = "positive" if is_pos else "negative"
-            print(f"{disease_type.title()} Prediction Raw: {pred_val}, Threshold: {thresh}")
-            print(f"{disease_type.title()} Predicted Class: {pred_class}, Conf: {conf}%")
+            print(f"{disease_type.title()} Pred: {pred_class} ({conf}%)")
 
-        # Attempt Grad-CAM
-        print(f"\n--- Attempting Grad-CAM for {disease_type} ---")
-        if not layer_name_constant or "YOUR_" in layer_name_constant:
-             print(f"⚠️ SKIPPING Grad-CAM: Invalid/placeholder layer name '{layer_name_constant}'.")
-             # heatmap_filename_base remains unique_filename (original)
-        else:
-             try:
-                 # Call the updated Grad-CAM function
-                 heatmap_filename_base = generate_grad_cam(model, preprocessed_img, file_path, layer_name_constant)
-                 if heatmap_filename_base == unique_filename: print(f"⚠️ Grad-CAM failed/fallback for {disease_type}.")
-                 else: print(f"✅ Grad-CAM successful for {disease_type}: {heatmap_filename_base}")
-             except Exception as grad_e:
-                 import traceback
-                 print(f"❌ Uncaught Error during Grad-CAM call for {disease_type}: {grad_e}")
-                 traceback.print_exc()
-                 heatmap_filename_base = unique_filename # Ensure fallback
+        # Attempt Grad-CAM (unless explicitly skipped like Pneumonia)
+        if disease_type != 'pneumonia': # Check if we should attempt Grad-CAM
+            print(f"\n--- Attempting Grad-CAM for {disease_type} ---")
+            if not layer_name_constant or "YOUR_" in layer_name_constant: # Double check name validity
+                 print(f"⚠️ SKIPPING Grad-CAM: Invalid layer name '{layer_name_constant}'.")
+                 # heatmap_filename_base remains unique_filename
+            else:
+                 try:
+                     heatmap_filename_base = generate_grad_cam(model, preprocessed_img, file_path, layer_name_constant)
+                     if heatmap_filename_base == unique_filename: print(f"⚠️ Grad-CAM failed/fallback for {disease_type}.")
+                     else: print(f"✅ Grad-CAM successful for {disease_type}: {heatmap_filename_base}")
+                 except Exception as grad_e:
+                     import traceback
+                     print(f"❌ Uncaught Error during Grad-CAM call: {grad_e}"); traceback.print_exc()
+                     heatmap_filename_base = unique_filename # Fallback
 
         # Details based on prediction
         details = []
-        # (Your existing details logic)
+        # (Details logic remains the same)
         if disease_type == 'lung-cancer':
              if pred_class == LUNG_CANCER_CLASSES[0]: details = ["Cellular patterns suggest glandular origin.", "Potential adenocarcinoma features observed.", "Further cytological analysis recommended."]
              elif pred_class == LUNG_CANCER_CLASSES[1]: details = ["Normal cellular structures observed.", "No significant signs of malignancy detected.", "Appears consistent with benign tissue."]
@@ -938,19 +882,19 @@ def detect_disease(disease_type):
 @app.route('/lung-cancer-results')
 def lung_cancer_results():
     result = session.get('last_result');
-    if not result or result.get('disease_type') != 'lung-cancer': print("Redirect: No/Wrong result."); return redirect(url_for('index'))
+    if not result or result.get('disease_type') != 'lung-cancer': print("Redirect: No/Wrong LC result."); return redirect(url_for('index'))
     print(f"Render LC results: {result.get('prediction')}"); return render_template('lung-cancer-results.html', result=result)
 
 @app.route('/tuberculosis-results')
 def tuberculosis_results():
     result = session.get('last_result');
-    if not result or result.get('disease_type') != 'tuberculosis': print("Redirect: No/Wrong result."); return redirect(url_for('index'))
+    if not result or result.get('disease_type') != 'tuberculosis': print("Redirect: No/Wrong TB result."); return redirect(url_for('index'))
     print(f"Render TB results: {result.get('prediction')}"); return render_template('tuberculosis-results.html', result=result)
 
 @app.route('/pneumonia-results')
 def pneumonia_results():
     result = session.get('last_result');
-    if not result or result.get('disease_type') != 'pneumonia': print("Redirect: No/Wrong result."); return redirect(url_for('index'))
+    if not result or result.get('disease_type') != 'pneumonia': print("Redirect: No/Wrong Pneu result."); return redirect(url_for('index'))
     print(f"Render Pneu results: {result.get('prediction')}"); return render_template('pneumonia-results.html', result=result)
 
 # Download PDF route
@@ -975,11 +919,10 @@ def download_report(disease_type):
              try: os.remove(pdf_path); print(f"Cleaned up PDF: {pdf_path}")
              except OSError as e_rem: print(f"Error removing PDF {pdf_path}: {e_rem}")
 
-# Uploads route (for direct access - ensure security)
+# Uploads route
 @app.route('/uploads/<path:filename>')
 def uploads(filename):
     if '..' in filename or filename.startswith('/'): return jsonify({'error': 'Invalid path'}), 400
-    # Consider adding more checks here if needed
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # Run
