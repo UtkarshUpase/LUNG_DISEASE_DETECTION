@@ -413,7 +413,7 @@ def detect_disease(disease_type):
         session['last_result'] = result
         return jsonify({
     'success': True,
-    'redirect': url_for(f"{disease_type}_results"),
+    'redirect': url_for(f"{disease_type.replace('-', '_')}_results"),
     'result': result
 })
 
