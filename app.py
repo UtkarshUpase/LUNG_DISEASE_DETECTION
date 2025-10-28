@@ -13,7 +13,7 @@ from reportlab.lib.utils import ImageReader
 import json
 import sys
 import io
-from flask_ngrok import run_with_ngrok
+# from flask_ngrok import run_with_ngrok
 import tensorflow as tf
 import gdown
 from tensorflow.keras.models import load_model
