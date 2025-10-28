@@ -18,39 +18,41 @@ import tensorflow as tf
 import gdown
 from tensorflow.keras.models import load_model
 
-
-# === Model download section ===
-
+# === Lazy Model Loading System ===
 MODEL_DIR = "models"
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# Google Drive File IDs (replace these with YOUR IDs)
+# Google Drive IDs for each model
 MODEL_IDS = {
-    "lung_cancer_model.h5": os.getenv("LUNG_MODEL_ID"),
-    "pneumonia_model.h5": os.getenv("PNEUMONIA_MODEL_ID"),
-    "tuberculosis_model.h5": os.getenv("TB_MODEL_ID")
+    "lung-cancer": "1IuBs4zJjDRt-r5ershRjWxn3u4_aQhb7",
+    "pneumonia": "1tayAtpf4i2xEWbsRR4wOsQXoEjV_VzPj",
+    "tuberculosis": "1RgH32TxcvPZQUDn3QCb-FsKadkJjUkMK"
 }
-def download_model(name, file_id):
-    """Download a model from Google Drive if not already present."""
-    path = os.path.join(MODEL_DIR, name)
-    if not os.path.exists(path):
-        print(f"🔽 Downloading {name} from Google Drive...")
-        url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, path, quiet=False)
-    else:
-        print(f"✅ {name} already exists, skipping download.")
-    return path
 
-# === Download models from Google Drive before loading ===
-for name, fid in MODEL_IDS.items():
-    if fid:
-        try:
-            print(f"🔽 Checking {name} ...")
-            download_model(name, fid)
-        except Exception as e:
-            print(f"❌ Failed to download {name}: {e}")
+# Cached models
+loaded_models = {}
+
+def get_model(disease_type):
+    """Lazy-load model: downloads and loads only when needed."""
+    if disease_type in loaded_models:
+        return loaded_models[disease_type]
+
+    filename = f"{disease_type}_model.h5"
+    file_path = os.path.join(MODEL_DIR, filename)
+
+    if not os.path.exists(file_path):
+        print(f"🔽 Downloading {filename} from Google Drive...")
+        file_id = MODEL_IDS.get(disease_type)
+        if not file_id:
+            raise ValueError(f"No Google Drive ID found for {disease_type}")
+        gdown.download(f"https://drive.google.com/uc?id={file_id}", file_path, quiet=False)
     else:
-        print(f"⚠️ No Drive file ID found for {name}. Skipping download.")
+        print(f"✅ Using cached {filename}")
+
+    print(f"🧠 Loading {filename}...")
+    model = load_model(file_path)
+    loaded_models[disease_type] = model
+    return model
 
 
 # # Set locale to UTF-8 to avoid encoding issues
@@ -115,10 +117,7 @@ def load_pneumonia_model():
         print(f"Exception while loading pneumonia model: {e}")
         return None
 
-# Load models at startup
-lung_cancer_model = load_lung_cancer_model()
-tuberculosis_model = load_tuberculosis_model()
-pneumonia_model = load_pneumonia_model()
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -388,15 +387,18 @@ def detect_disease(disease_type):
             
             print(f"Preprocessed image shape: {preprocessed_img.shape}")  # Debugging
             
-            # Select the appropriate model based on disease_type
-            if disease_type == 'lung-cancer':
-                model = lung_cancer_model
-            elif disease_type == 'tuberculosis':
-                model = tuberculosis_model
-            elif disease_type == 'pneumonia':
-                model = pneumonia_model
-            else:
-                return jsonify({'error': 'Invalid disease type'}), 400
+            # # Select the appropriate model based on disease_type
+            # if disease_type == 'lung-cancer':
+            #     model = lung_cancer_model
+            # elif disease_type == 'tuberculosis':
+            #     model = tuberculosis_model
+            # elif disease_type == 'pneumonia':
+            #     model = pneumonia_model
+            # else:
+            #     return jsonify({'error': 'Invalid disease type'}), 400
+
+            model = get_model(disease_type)
+
             
             if model is None:
                 print(f"Model for {disease_type} is not available. Check if the model file exists and is valid.")
