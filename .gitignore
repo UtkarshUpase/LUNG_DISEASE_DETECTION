@@ -7,6 +7,5 @@ __pycache__/
 .vscode/
 uploads/
 videos/
-/models/
 *.h5
 venv/
